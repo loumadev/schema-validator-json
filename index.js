@@ -27,6 +27,7 @@ const {iterate, uniquify} = require("./utils");
  * @prop {boolean} [empty=true] Available for strings and array
  * @prop {number} [min=-Infinity] Minimal number value, string length or array length
  * @prop {number} [max=Infinity] Maximal number value, string length or array length
+ * @prop {RegExp} [match] Available for strings. Validates string using regular expression.
  * @prop {(value: any, schema: Schema | SchemaOptions) => ValidationResult | Promise<ValidationResult>} [validator] Custom validation function
  */
 
@@ -55,6 +56,7 @@ function formatOptions(options) {
 		empty = true,
 		min = -Infinity,
 		max = Infinity,
+		match,
 		validator
 	} = options;
 
@@ -163,6 +165,7 @@ async function validate(x, schema) {
 			empty = true,
 			min = -Infinity,
 			max = Infinity,
+			match,
 			validator
 		} = options;
 
@@ -253,6 +256,18 @@ async function validate(x, schema) {
 				valid: false,
 				message: message
 			};
+		}
+
+		// Regex validation
+		{
+			if(match && type === "string") {
+				if(!match.test(x)) {
+					return {
+						valid: false,
+						message: `String '${x}' does not match pattern '${match.toString()}'!`
+					};
+				}
+			}
 		}
 
 
