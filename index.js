@@ -1,0 +1,350 @@
+const {iterate, uniquify} = require("./utils");
+
+/**
+ * @typedef {Object} ValidationResult
+ * @prop {boolean} valid
+ * @prop {string} [message]
+ * @prop {string[]} [path]
+ */
+
+/**
+ * @typedef {Object} SchemaOptions
+ * @prop {string} [type="any"] 
+ * @prop {string} [instance] 
+ * @prop {SchemaOptions[]} [types] (`type` is ignored, if this is set)
+ * @prop {string[]} [instances] (`instance` is ignored, if this is set)
+ * @prop {Schema} [schema] 
+ * @prop {SchemaOptions[]} [items=[{type: "any"}]] (Available if `type == "array"` only)
+ * @prop {boolean} [keepOrder=false] (Available if `type == "array"` only)
+ * @prop {boolean} [keepLength=false] (Available if `type == "array"` only)
+ * @prop {boolean} [nullable=false] 
+ * @prop {boolean} [optional=false] 
+ * @prop {number} [min=-Infinity] Minimal number value, string length or array length
+ * @prop {number} [max=Infinity] Maximal number value, string length or array length
+ * @prop {(value: any, schema: Schema | SchemaOptions) => ValidationResult | Promise<ValidationResult>} [validator] Custom validation function
+ */
+
+/**
+ * @typedef {Object<string, SchemaOptions>} Schema
+ */
+
+
+/**
+ *
+ * @param {SchemaOptions} options
+ * @return {string} 
+ */
+function formatOptions(options) {
+	const {
+		type = "any",
+		instance,
+		types,
+		instances,
+		schema,
+		items = [{type: "any"}],
+		keepOrder = false,
+		keepLength = false,
+		nullable = false,
+		optional = false,
+		min = -Infinity,
+		max = Infinity,
+		validator
+	} = options;
+
+	const _types = types || [{type}];
+	const _instances = instances || instance && [instance] || [];
+
+	if(schema) {
+		const schemaPairs = iterate(schema)
+			.filter(e => e[1] !== "$schema")
+			.map(([i, k, q]) => {
+				let computedType = formatOptions(q);
+				if(q.optional) computedType = computedType.replace(/ \| undefined$/m, "");
+
+				return `${k}${q.optional ? "?" : ""}: ${computedType}`;
+			});
+		return `{${schemaPairs.join(", ")}}`;
+	} else {
+		const computedTypes = _types
+			.map(e => {
+				const isArray = e.type == "array";
+				const arrayTypes = isArray && items.map(q => formatOptions(q));
+				let arrayStr = "";
+
+				const isSchema = !!e.schema;
+				let schemaStr = isSchema && formatOptions({schema: e.schema}) || "";
+
+				if(isArray && !isSchema) {
+					if(keepOrder) {
+						arrayStr = `[${arrayTypes.join(", ")}${keepLength ? "" : ", ..."}]`;
+					} else {
+						const uniqueTypes = uniquify(arrayTypes);
+						arrayStr = uniqueTypes.join(" | ");
+						if(uniqueTypes.length > 1) arrayStr = `(${arrayStr})`;
+						arrayStr = `${arrayStr}[${keepLength ? Math.max(items.length, min) : ""}]`;
+					}
+				}
+
+				return _instances
+					.map(t => {
+						if(isSchema) return schemaStr;
+						if(isArray) return arrayStr;
+						if(e.type && e.type !== "any") return `${e.type} & ${t}`;
+						return t;
+					})
+					.join(" | ") || schemaStr || arrayStr || e.type || "any";
+			});
+
+		if(nullable) computedTypes.push("null");
+		if(optional) computedTypes.push("undefined");
+
+		return computedTypes.join(" | ");
+	}
+}
+
+
+
+/**
+ * 
+ * @param {any} x 
+ * @param {Schema | SchemaOptions} schema 
+ * @returns {Promise<ValidationResult>}
+ */
+async function validate(x, schema) {
+	if(schema.$schema) {
+		for(const key in schema) {
+			if(key == "$schema") continue;
+
+			let result = null;
+
+			if(key in x) {
+				result = await validate(x[key], schema[key]);
+				if(result.valid) continue;
+			}
+			else if(schema[key].optional) continue;
+
+			if(result) {
+				if(!result.path) result.path = [];
+				result.path.push(key);
+			}
+
+			return result || {
+				valid: false,
+				message: `Required property '${key}' missing!`,
+				path: [key]
+			};
+		}
+
+		return {valid: true};
+	} else {
+		/** @type {SchemaOptions} */
+		const options = schema;
+
+
+		// Deconstruct options
+		const {
+			type = "any",
+			instance,
+			types,
+			instances,
+			schema: _schema,
+			items = [{type: "any"}],
+			keepOrder = false,
+			keepLength = false,
+			nullable = false,
+			optional = false,
+			min = -Infinity,
+			max = Infinity,
+			validator
+		} = options;
+
+
+		// Invalid values validation
+		{
+			if(x === undefined) {
+				if(optional) return {valid: true};
+				else return {
+					valid: false,
+					message: "Non-optional property is 'undefined'!"
+				};
+			}
+			if(x === null) {
+				if(nullable) return {valid: true};
+				else return {
+					valid: false,
+					message: "Non-nullable property is 'null'!"
+				};
+			}
+		}
+
+
+		// Type validation
+		{
+			let isTypeValid = false;
+			let message = "";
+
+			if(types) {
+				for(const t of types) {
+					const result = await validate(x, t);
+
+					if(result.valid) {
+						isTypeValid = true;
+						break;
+					}
+				}
+
+				if(!isTypeValid) message = `Invalid property type! Expected '${formatOptions(schema)}', instead got '${typeof x}'!`;
+				//if(!isTypeValid) message = `Invalid property type! Expected '${types.map(e => e.type).join(" | ")}', instead got '${typeof x}'!`;
+			} else {
+				if(type === "any") isTypeValid = true;
+				if(type === "array") isTypeValid = Array.isArray(x);
+
+				if(type === "bigint") isTypeValid = typeof x === "bigint";
+				if(type === "boolean") isTypeValid = typeof x === "boolean";
+				if(type === "function") isTypeValid = typeof x === "function";
+				if(type === "integer") isTypeValid = typeof x === "number" && x % 1 === 0;
+				if(type === "float") isTypeValid = typeof x === "number";
+				if(type === "number") isTypeValid = typeof x === "number";
+				if(type === "object") isTypeValid = typeof x === "object";
+				if(type === "string") isTypeValid = typeof x === "string";
+				if(type === "symbol") isTypeValid = typeof x === "symbol";
+				if(type === "undefined") isTypeValid = typeof x === "undefined";
+
+				if(!isTypeValid) message = `Invalid property type! Expected '${type}', instead got '${typeof x}'!`;
+			}
+
+			if(!isTypeValid) return {
+				valid: false,
+				message: message
+			};
+		}
+
+
+		// Length validation
+		{
+			const isMin = min !== -Infinity;
+			const isMax = max !== Infinity;
+			let message = "";
+
+			if(type === "integer" || type === "float" || type === "number") {
+				if(isMin && x < min) message = `Invalid number value! Minimal number value is '${min}', instead got '${x}'`;
+				if(isMax && x > max) message = `Invalid number value! Maximal number value is '${max}', instead got '${x}'`;
+			}
+			if(type === "string") {
+				if(isMin && x.length < min) message = `Invalid string length! Minimal string length is '${min}', instead got '${x.length}'`;
+				if(isMax && x.length > max) message = `Invalid string length! Maximal string length is '${max}', instead got '${x.length}'`;
+			}
+			if(type === "array") {
+				if(isMin && x.length < min) message = `Invalid array length! Minimal array length is '${min}', instead got '${x.length}'`;
+				if(isMax && x.length > max) message = `Invalid array length! Maximal array length is '${max}', instead got '${x.length}'`;
+			}
+
+			if(message) return {
+				valid: false,
+				message: message
+			};
+		}
+
+
+		// Instance validation
+		{
+			const checkInstance = instances || instance;
+			const className = checkInstance && x && x.constructor && x.constructor.name;
+			let isInstanceValid = false || !checkInstance;
+			let message = "";
+
+			if(checkInstance && !className) {
+				message = `Invalid property instance! Cannot get instance name of the property!`;
+			}
+			else if(instances) {
+				for(const i of instances) {
+					if(className === i) {
+						isInstanceValid = true;
+						break;
+					}
+				}
+
+				if(!isInstanceValid) message = `Invalid property instance! Expected '${instances.join(" | ")}', instead got '${className}'!`;
+			}
+			else if(instance) {
+				if(className === instance) isInstanceValid = true;
+				else message = `Invalid property instance! Expected '${instance}', instead got '${x.constructor.name}'!`;
+			}
+
+			if(!isInstanceValid) return {
+				valid: false,
+				message: message
+			};
+		}
+
+
+		// Array validation
+		{
+			if(type === "array") {
+				if(keepLength && x.length !== items.length) return {
+					valid: false,
+					message: `Invalid number of elements in array! Expected '${items.length}' items, instead got '${x.length}'!`
+				};
+
+				for(const [i, e] of iterate(x)) {
+					let error = null;
+
+					if(keepOrder) {
+						//Values which don't have to be validated
+						if(!items[i]) continue;
+
+						//Strictly pick item on current index
+						const result = await validate(e, items[i]);
+						if(result.valid) continue;
+
+						error = result;
+					} else {
+						//Scan if the current type is provided in the list
+						for(const s of items) {
+							const result = await validate(e, s);
+							if(result.valid) continue;
+
+							error = result;
+							break;
+						}
+					}
+
+					if(error) return {
+						valid: false,
+						message: `Invalid type of element in array! ${error.message}`
+					};
+				}
+			}
+		}
+
+
+		// Schema validation
+		{
+			if(_schema) {
+				_schema.$schema = true;
+				const result = await validate(x, _schema);
+
+				if(!result.valid) return {
+					valid: false,
+					message: `Object does not match the schema! ${result.message}`
+				};
+			}
+		}
+
+
+		// Custom validator
+		{
+			if(typeof validator === "function") {
+				const result = await validator(x, schema);
+
+				return result;
+			}
+		}
+
+
+		// Passed all checks
+		return {valid: true};
+	}
+}
+
+module.exports = validate;
