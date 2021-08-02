@@ -134,7 +134,7 @@ async function validate(x, schema) {
 
 			if(result) {
 				if(!result.path) result.path = [];
-				result.path.push(key);
+				result.path.unshift(key);
 			}
 
 			return result || {
