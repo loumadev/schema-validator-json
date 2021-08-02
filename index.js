@@ -351,7 +351,8 @@ async function validate(x, schema) {
 
 				if(!result.valid) return {
 					valid: false,
-					message: `Object does not match the schema! ${result.message}`
+					message: `Object does not match the schema! ${result.message}`,
+					path: result.path
 				};
 			}
 		}
