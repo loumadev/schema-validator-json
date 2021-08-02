@@ -24,6 +24,7 @@ const {iterate, uniquify} = require("./utils");
  * @prop {boolean} [keepLength=false] (Available if `type == "array"` only)
  * @prop {boolean} [nullable=false] 
  * @prop {boolean} [optional=false] 
+ * @prop {boolean} [empty=true] Available for strings and array
  * @prop {number} [min=-Infinity] Minimal number value, string length or array length
  * @prop {number} [max=Infinity] Maximal number value, string length or array length
  * @prop {(value: any, schema: Schema | SchemaOptions) => ValidationResult | Promise<ValidationResult>} [validator] Custom validation function
@@ -51,6 +52,7 @@ function formatOptions(options) {
 		keepLength = false,
 		nullable = false,
 		optional = false,
+		empty = true,
 		min = -Infinity,
 		max = Infinity,
 		validator
@@ -158,6 +160,7 @@ async function validate(x, schema) {
 			keepLength = false,
 			nullable = false,
 			optional = false,
+			empty = true,
 			min = -Infinity,
 			max = Infinity,
 			validator
@@ -233,15 +236,17 @@ async function validate(x, schema) {
 
 			if(type === "integer" || type === "float" || type === "number") {
 				if(isMin && x < min) message = `Invalid number value! Minimal number value is '${min}', instead got '${x}'`;
-				if(isMax && x > max) message = `Invalid number value! Maximal number value is '${max}', instead got '${x}'`;
+				else if(isMax && x > max) message = `Invalid number value! Maximal number value is '${max}', instead got '${x}'`;
 			}
 			if(type === "string") {
-				if(isMin && x.length < min) message = `Invalid string length! Minimal string length is '${min}', instead got '${x.length}'`;
-				if(isMax && x.length > max) message = `Invalid string length! Maximal string length is '${max}', instead got '${x.length}'`;
+				if(!empty && x.length === 0) message = `Invalid string length! String cannot be empty!`;
+				else if(isMin && x.length < min) message = `Invalid string length! Minimal string length is '${min}', instead got '${x.length}'`;
+				else if(isMax && x.length > max) message = `Invalid string length! Maximal string length is '${max}', instead got '${x.length}'`;
 			}
 			if(type === "array") {
-				if(isMin && x.length < min) message = `Invalid array length! Minimal array length is '${min}', instead got '${x.length}'`;
-				if(isMax && x.length > max) message = `Invalid array length! Maximal array length is '${max}', instead got '${x.length}'`;
+				if(!empty && x.length === 0) message = `Invalid array length! Array cannot be empty!`;
+				else if(isMin && x.length < min) message = `Invalid array length! Minimal array length is '${min}', instead got '${x.length}'`;
+				else if(isMax && x.length > max) message = `Invalid array length! Maximal array length is '${max}', instead got '${x.length}'`;
 			}
 
 			if(message) return {
