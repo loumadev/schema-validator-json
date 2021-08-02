@@ -1,5 +1,10 @@
 const {iterate, uniquify} = require("./utils");
 
+//TODO: Refactor code
+//TODO: Create new type with all possible types
+//TODO: Add property to `SchemaOptions` to allow arrays to have only predefined values (enum)
+//TODO: Create documentation
+
 /**
  * @typedef {Object} ValidationResult
  * @prop {boolean} valid
