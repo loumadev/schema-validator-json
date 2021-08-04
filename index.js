@@ -126,7 +126,7 @@ async function validate(x, schema) {
 
 			let result = null;
 
-			if(key in x) {
+			if(x && key in x) {
 				result = await validate(x[key], schema[key]);
 				if(result.valid) continue;
 			}
