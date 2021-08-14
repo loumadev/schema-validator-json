@@ -28,6 +28,7 @@ const {iterate, uniquify} = require("./utils");
  * @prop {number} [min=-Infinity] Minimal number value, string length or array length
  * @prop {number} [max=Infinity] Maximal number value, string length or array length
  * @prop {RegExp} [match] Available for strings. Validates string using regular expression.
+ * @prop {any} [equals] Strict equality check against the value
  * @prop {(value: any, schema: Schema | SchemaOptions) => ValidationResult | Promise<ValidationResult>} [validator] Custom validation function
  */
 
@@ -57,6 +58,7 @@ function formatOptions(options) {
 		min = -Infinity,
 		max = Infinity,
 		match,
+		equals,
 		validator
 	} = options;
 
@@ -166,6 +168,7 @@ async function validate(x, schema) {
 			min = -Infinity,
 			max = Infinity,
 			match,
+			equals,
 			validator
 		} = options;
 
@@ -353,6 +356,17 @@ async function validate(x, schema) {
 					valid: false,
 					message: `Object does not match the schema! ${result.message}`,
 					path: result.path
+				};
+			}
+		}
+
+
+		// Strict equality check
+		{
+			if("equals" in options) {
+				if(x !== equals) return {
+					valid: false,
+					message: `Invalid property value! Expected value '${equals}', instead got '${x}'!`
 				};
 			}
 		}
