@@ -121,7 +121,7 @@ function formatOptions(options) {
  * @param {Schema | SchemaOptions} schema 
  * @returns {Promise<ValidationResult>}
  */
-async function validate(x, schema) {
+function validate(x, schema) {
 	if(schema.$schema) {
 		for(const key in schema) {
 			if(key == "$schema") continue;
@@ -129,7 +129,7 @@ async function validate(x, schema) {
 			let result = null;
 
 			if(x && key in x) {
-				result = await validate(x[key], schema[key]);
+				result = validate(x[key], schema[key]);
 				if(result.valid) continue;
 			}
 			else if(schema[key].optional) continue;
@@ -199,7 +199,7 @@ async function validate(x, schema) {
 
 			if(types) {
 				for(const t of types) {
-					const result = await validate(x, t);
+					const result = validate(x, t);
 
 					if(result.valid) {
 						isTypeValid = true;
@@ -322,14 +322,14 @@ async function validate(x, schema) {
 						if(!items[i]) continue;
 
 						//Strictly pick item on current index
-						const result = await validate(e, items[i]);
+						const result = validate(e, items[i]);
 						if(result.valid) continue;
 
 						error = result;
 					} else {
 						//Scan if the current type is provided in the list
 						for(const s of items) {
-							const result = await validate(e, s);
+							const result = validate(e, s);
 							if(result.valid) continue;
 
 							error = result;
@@ -350,7 +350,7 @@ async function validate(x, schema) {
 		{
 			if(_schema) {
 				_schema.$schema = true;
-				const result = await validate(x, _schema);
+				const result = validate(x, _schema);
 
 				if(!result.valid) return {
 					valid: false,
@@ -375,7 +375,7 @@ async function validate(x, schema) {
 		// Custom validator
 		{
 			if(typeof validator === "function") {
-				const result = await validator(x, schema);
+				const result = validator(x, schema);
 
 				return result;
 			}
