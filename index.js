@@ -119,7 +119,7 @@ function formatOptions(options) {
  * 
  * @param {any} x 
  * @param {Schema | SchemaOptions} schema 
- * @returns {Promise<ValidationResult>}
+ * @returns {ValidationResult}
  */
 function validate(x, schema) {
 	if(schema.$schema) {
