@@ -3,6 +3,8 @@ const {iterate, uniquify} = require("./utils");
 //TODO: Refactor code
 //TODO: Create new type with all possible types
 //TODO: Add property to `SchemaOptions` to allow arrays to have only predefined values (enum)
+//TODO: Add property to `SchemaOptions` to allow types wraping for array items when `keepOrder` is true and `keepLength` is false
+//TODO: Add schema validation of itself
 //TODO: Create documentation
 
 /**
@@ -113,6 +115,27 @@ function formatOptions(options) {
 	}
 }
 
+/**
+ *
+ * @param {any} value
+ * @return {string} 
+ */
+function formatValue(value) {
+	if(value === null) return "null";
+	if(value === undefined) return "undefined";
+	if(typeof value == "string") return "string";
+	if(typeof value == "number") return "number";
+	if(typeof value == "boolean") return "boolean";
+	if(typeof value == "object") {
+		if(Array.isArray(value)) {
+			return `[${value.map(e => formatValue(e)).join(", ")}]`;
+		} else {
+			return `{${Object.keys(value).map(k => `${k}: ${formatValue(value[k])}`).join(", ")}}`;
+		}
+	}
+	return "any";
+}
+
 
 
 /**
@@ -123,27 +146,30 @@ function formatOptions(options) {
  */
 function validate(x, schema) {
 	if(schema.$schema) {
+
+		//Trying to validate a non-object value against a schema
+		if(typeof x !== "object" || x === null) {
+			return {
+				valid: false,
+				message: `Expected 'object', instead got '${formatValue(x)}'!`
+			};
+		}
+
+		//Validate each property of the schema
 		for(const key in schema) {
 			if(key == "$schema") continue;
 
-			let result = null;
+			//Found a key in the object, so we can try to validate it
+			if(key in x) {
+				const result = validate(x[key], schema[key]);
 
-			if(x && key in x) {
-				result = validate(x[key], schema[key]);
-				if(result.valid) continue;
+				if(!result.valid) {
+					(result.path || (result.path = [])).unshift(key);
+					return result;
+				}
+			} else if(schema[key].optional) { //If the key is not present and it is optional, we can skip it
+				continue;
 			}
-			else if(schema[key].optional) continue;
-
-			if(result) {
-				if(!result.path) result.path = [];
-				result.path.unshift(key);
-			}
-
-			return result || {
-				valid: false,
-				message: `Required property '${key}' missing!`,
-				path: [key]
-			};
 		}
 
 		return {valid: true};
@@ -207,7 +233,7 @@ function validate(x, schema) {
 					}
 				}
 
-				if(!isTypeValid) message = `Invalid property type! Expected '${formatOptions(schema)}', instead got '${typeof x}'!`;
+				if(!isTypeValid) message = `Invalid property type! Expected '${formatOptions(schema)}', instead got '${formatValue(x)}'!`;
 				//if(!isTypeValid) message = `Invalid property type! Expected '${types.map(e => e.type).join(" | ")}', instead got '${typeof x}'!`;
 			} else {
 				if(type === "any") isTypeValid = true;
@@ -224,7 +250,7 @@ function validate(x, schema) {
 				if(type === "symbol") isTypeValid = typeof x === "symbol";
 				if(type === "undefined") isTypeValid = typeof x === "undefined";
 
-				if(!isTypeValid) message = `Invalid property type! Expected '${type}', instead got '${typeof x}'!`;
+				if(!isTypeValid) message = `Invalid property type! Expected '${type}', instead got '${formatValue(x)}'!`;
 			}
 
 			if(!isTypeValid) return {
@@ -316,6 +342,7 @@ function validate(x, schema) {
 
 				for(const [i, e] of iterate(x)) {
 					let error = null;
+					let path = [];
 
 					if(keepOrder) {
 						//Values which don't have to be validated
@@ -326,6 +353,8 @@ function validate(x, schema) {
 						if(result.valid) continue;
 
 						error = result;
+						path = result.path || [];
+						path.unshift(`[${i}]`);
 					} else {
 						//Scan if the current type is provided in the list
 						for(const s of items) {
@@ -333,13 +362,16 @@ function validate(x, schema) {
 							if(result.valid) continue;
 
 							error = result;
+							path = result.path || [];
+							path.unshift(`[${i}]`);
 							break;
 						}
 					}
 
 					if(error) return {
 						valid: false,
-						message: `Invalid type of element in array! ${error.message}`
+						message: `Invalid type of element in array! ${error.message}`,
+						path: path
 					};
 				}
 			}
