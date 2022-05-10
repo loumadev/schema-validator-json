@@ -36,7 +36,7 @@ const {iterate, uniquify} = require("./utils");
  * @prop {number} [max=Infinity] Maximal number value, string length or array length
  * @prop {RegExp} [match] Available for strings. Validates string using regular expression.
  * @prop {any} [equals] Strict equality check against the value
- * @prop {(value: any, schema: Schema | SchemaOptions) => ValidationResult | Promise<ValidationResult>} [validator] Custom validation function
+ * @prop {(value: any, schema: Schema | SchemaOptions) => ValidationResult} [validator] Custom validation function
  */
 
 /**
