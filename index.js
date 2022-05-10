@@ -8,10 +8,15 @@ const {iterate, uniquify} = require("./utils");
 //TODO: Create documentation
 
 /**
- * @typedef {Object} ValidationResult
- * @prop {boolean} valid
- * @prop {string} [message]
- * @prop {string[]} [path]
+ * @typedef {{valid: true}} ValidationSuccess
+ */
+
+/**
+ * @typedef {{valid: false, message: string, path: string[]}} ValidationFailure
+ */
+
+/**
+ * @typedef {ValidationSuccess | ValidationFailure} ValidationResult
  */
 
 /**
@@ -136,6 +141,15 @@ function formatValue(value) {
 	return "any";
 }
 
+/**
+ *
+ * @param {Object} object
+ * @return {ValidationResult} 
+ */
+function createResult(object) {
+	return object.valid ? Object.assign({valid: true}, object) : Object.assign({valid: false, path: [], message: ""}, object);
+}
+
 
 
 /**
@@ -149,10 +163,10 @@ function validate(x, schema) {
 
 		//Trying to validate a non-object value against a schema
 		if(typeof x !== "object" || x === null) {
-			return {
+			return createResult({
 				valid: false,
 				message: `Expected 'object', instead got '${formatValue(x)}'!`
-			};
+			});
 		}
 
 		//Validate each property of the schema
@@ -172,7 +186,7 @@ function validate(x, schema) {
 			}
 		}
 
-		return {valid: true};
+		return createResult({valid: true});
 	} else {
 		/** @type {SchemaOptions} */
 		const options = schema;
@@ -202,18 +216,18 @@ function validate(x, schema) {
 		// Invalid values validation
 		{
 			if(x === undefined) {
-				if(optional) return {valid: true};
-				else return {
+				if(optional) return createResult({valid: true});
+				else return createResult({
 					valid: false,
 					message: "Non-optional property is 'undefined'!"
-				};
+				});
 			}
 			if(x === null) {
-				if(nullable) return {valid: true};
-				else return {
+				if(nullable) return createResult({valid: true});
+				else return createResult({
 					valid: false,
 					message: "Non-nullable property is 'null'!"
-				};
+				});
 			}
 		}
 
@@ -253,10 +267,10 @@ function validate(x, schema) {
 				if(!isTypeValid) message = `Invalid property type! Expected '${type}', instead got '${formatValue(x)}'!`;
 			}
 
-			if(!isTypeValid) return {
+			if(!isTypeValid) return createResult({
 				valid: false,
 				message: message
-			};
+			});
 		}
 
 
@@ -281,20 +295,20 @@ function validate(x, schema) {
 				else if(isMax && x.length > max) message = `Invalid array length! Maximal array length is '${max}', instead got '${x.length}'`;
 			}
 
-			if(message) return {
+			if(message) return createResult({
 				valid: false,
 				message: message
-			};
+			});
 		}
 
 		// Regex validation
 		{
 			if(match && type === "string") {
 				if(!match.test(x)) {
-					return {
+					return createResult({
 						valid: false,
 						message: `String '${x}' does not match pattern '${match.toString()}'!`
-					};
+					});
 				}
 			}
 		}
@@ -325,20 +339,20 @@ function validate(x, schema) {
 				else message = `Invalid property instance! Expected '${instance}', instead got '${x.constructor.name}'!`;
 			}
 
-			if(!isInstanceValid) return {
+			if(!isInstanceValid) return createResult({
 				valid: false,
 				message: message
-			};
+			});
 		}
 
 
 		// Array validation
 		{
 			if(type === "array") {
-				if(keepLength && x.length !== items.length) return {
+				if(keepLength && x.length !== items.length) return createResult({
 					valid: false,
 					message: `Invalid number of elements in array! Expected '${items.length}' items, instead got '${x.length}'!`
-				};
+				});
 
 				for(const [i, e] of iterate(x)) {
 					let error = null;
@@ -368,11 +382,11 @@ function validate(x, schema) {
 						}
 					}
 
-					if(error) return {
+					if(error) return createResult({
 						valid: false,
 						message: `Invalid type of element in array! ${error.message}`,
 						path: path
-					};
+					});
 				}
 			}
 		}
@@ -384,11 +398,11 @@ function validate(x, schema) {
 				_schema.$schema = true;
 				const result = validate(x, _schema);
 
-				if(!result.valid) return {
+				if(!result.valid) return createResult({
 					valid: false,
 					message: `Object does not match the schema! ${result.message}`,
 					path: result.path
-				};
+				});
 			}
 		}
 
@@ -396,10 +410,10 @@ function validate(x, schema) {
 		// Strict equality check
 		{
 			if("equals" in options) {
-				if(x !== equals) return {
+				if(x !== equals) return createResult({
 					valid: false,
 					message: `Invalid property value! Expected value '${equals}', instead got '${x}'!`
-				};
+				});
 			}
 		}
 
@@ -415,7 +429,7 @@ function validate(x, schema) {
 
 
 		// Passed all checks
-		return {valid: true};
+		return createResult({valid: true});
 	}
 }
 
