@@ -34,6 +34,7 @@ const {iterate, uniquify} = require("./utils");
  * @prop {boolean} [empty=true] Available for strings and array
  * @prop {number} [min=-Infinity] Minimal number value, string length or array length
  * @prop {number} [max=Infinity] Maximal number value, string length or array length
+ * @prop {number} [length] Exact length of string or array
  * @prop {RegExp} [match] Available for strings. Validates string using regular expression.
  * @prop {any} [equals] Strict equality check against the value
  * @prop {(value: any, schema: Schema | SchemaOptions) => ValidationResult} [validator] Custom validation function
@@ -64,6 +65,7 @@ function formatOptions(options) {
 		empty = true,
 		min = -Infinity,
 		max = Infinity,
+		length,
 		match,
 		equals,
 		validator
@@ -207,6 +209,7 @@ function validate(x, schema) {
 			empty = true,
 			min = -Infinity,
 			max = Infinity,
+			length,
 			match,
 			equals,
 			validator
@@ -278,6 +281,7 @@ function validate(x, schema) {
 		{
 			const isMin = min !== -Infinity;
 			const isMax = max !== Infinity;
+			const isLength = length !== undefined;
 			let message = "";
 
 			if(type === "integer" || type === "float" || type === "number") {
@@ -285,12 +289,14 @@ function validate(x, schema) {
 				else if(isMax && x > max) message = `Invalid number value! Maximal number value is '${max}', instead got '${x}'`;
 			}
 			if(type === "string") {
-				if(!empty && x.length === 0) message = `Invalid string length! String cannot be empty!`;
+				if(isLength && x.length !== length) message = `Invalid string length! Expected '${length}', instead got '${x.length}'!`;
+				else if(!empty && x.length === 0) message = `Invalid string length! String cannot be empty!`;
 				else if(isMin && x.length < min) message = `Invalid string length! Minimal string length is '${min}', instead got '${x.length}'`;
 				else if(isMax && x.length > max) message = `Invalid string length! Maximal string length is '${max}', instead got '${x.length}'`;
 			}
 			if(type === "array") {
-				if(!empty && x.length === 0) message = `Invalid array length! Array cannot be empty!`;
+				if(isLength && x.length !== length) message = `Invalid array length! Expected '${length}', instead got '${x.length}'!`;
+				else if(!empty && x.length === 0) message = `Invalid array length! Array cannot be empty!`;
 				else if(isMin && x.length < min) message = `Invalid array length! Minimal array length is '${min}', instead got '${x.length}'`;
 				else if(isMax && x.length > max) message = `Invalid array length! Maximal array length is '${max}', instead got '${x.length}'`;
 			}
