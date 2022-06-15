@@ -176,16 +176,16 @@ function validate(x, schema) {
 			if(key == "$schema") continue;
 
 			//Found a key in the object, so we can try to validate it
-			if(key in x) {
-				const result = validate(x[key], schema[key]);
+			// if(key in x) {
+			const result = validate(x[key], schema[key]);
 
-				if(!result.valid) {
-					(result.path || (result.path = [])).unshift(key);
-					return result;
-				}
-			} else if(schema[key].optional) { //If the key is not present and it is optional, we can skip it
-				continue;
+			if(!result.valid) {
+				(result.path || (result.path = [])).unshift(key);
+				return result;
 			}
+			// } else if(schema[key].optional) { //If the key is not present and it is optional, we can skip it
+			// 	continue;
+			// }
 		}
 
 		return createResult({valid: true});
