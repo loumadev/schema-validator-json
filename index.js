@@ -8,7 +8,7 @@ const {iterate, uniquify} = require("./utils");
 //TODO: Create documentation
 
 /**
- * @typedef {{valid: true}} ValidationSuccess
+ * @typedef {{valid: true, matched: any}} ValidationSuccess
  */
 
 /**
@@ -171,6 +171,8 @@ function validate(x, schema) {
 			});
 		}
 
+		const matched = {};
+
 		//Validate each property of the schema
 		for(const key in schema) {
 			if(key == "$schema") continue;
@@ -179,7 +181,9 @@ function validate(x, schema) {
 			// if(key in x) {
 			const result = validate(x[key], schema[key]);
 
-			if(!result.valid) {
+			if(result.valid) {
+				matched[key] = result.matched;
+			} else {
 				(result.path || (result.path = [])).unshift(key);
 				return result;
 			}
@@ -188,7 +192,7 @@ function validate(x, schema) {
 			// }
 		}
 
-		return createResult({valid: true});
+		return createResult({valid: true, matched: matched});
 	} else {
 		/** @type {SchemaOptions} */
 		const options = schema;
@@ -219,14 +223,14 @@ function validate(x, schema) {
 		// Invalid values validation
 		{
 			if(x === undefined) {
-				if(optional) return createResult({valid: true});
+				if(optional) return createResult({valid: true, matched: x});
 				else return createResult({
 					valid: false,
 					message: "Non-optional property is 'undefined'!"
 				});
 			}
 			if(x === null) {
-				if(nullable) return createResult({valid: true});
+				if(nullable) return createResult({valid: true, matched: x});
 				else return createResult({
 					valid: false,
 					message: "Non-nullable property is 'null'!"
@@ -435,7 +439,7 @@ function validate(x, schema) {
 
 
 		// Passed all checks
-		return createResult({valid: true});
+		return createResult({valid: true, matched: x});
 	}
 }
 
