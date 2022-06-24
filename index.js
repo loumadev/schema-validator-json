@@ -127,7 +127,7 @@ function formatOptions(options) {
  * @param {any} value
  * @return {string} 
  */
-function formatValue(value) {
+function formatValueType(value) {
 	if(value === null) return "null";
 	if(value === undefined) return "undefined";
 	if(typeof value == "string") return "string";
@@ -135,9 +135,9 @@ function formatValue(value) {
 	if(typeof value == "boolean") return "boolean";
 	if(typeof value == "object") {
 		if(Array.isArray(value)) {
-			return `[${value.map(e => formatValue(e)).join(", ")}]`;
+			return `[${value.map(e => formatValueType(e)).join(", ")}]`;
 		} else {
-			return `{${Object.keys(value).map(k => `${k}: ${formatValue(value[k])}`).join(", ")}}`;
+			return `{${Object.keys(value).map(k => `${k}: ${formatValueType(value[k])}`).join(", ")}}`;
 		}
 	}
 	return "any";
@@ -167,7 +167,7 @@ function validate(x, schema) {
 		if(typeof x !== "object" || x === null) {
 			return createResult({
 				valid: false,
-				message: `Expected 'object', instead got '${formatValue(x)}'!`
+				message: `Expected 'object', instead got '${formatValueType(x)}'!`
 			});
 		}
 
@@ -254,7 +254,7 @@ function validate(x, schema) {
 					}
 				}
 
-				if(!isTypeValid) message = `Invalid property type! Expected '${formatOptions(schema)}', instead got '${formatValue(x)}'!`;
+				if(!isTypeValid) message = `Invalid property type! Expected '${formatOptions(schema)}', instead got '${formatValueType(x)}'!`;
 				//if(!isTypeValid) message = `Invalid property type! Expected '${types.map(e => e.type).join(" | ")}', instead got '${typeof x}'!`;
 			} else {
 				if(type === "any") isTypeValid = true;
@@ -271,7 +271,7 @@ function validate(x, schema) {
 				if(type === "symbol") isTypeValid = typeof x === "symbol";
 				if(type === "undefined") isTypeValid = typeof x === "undefined";
 
-				if(!isTypeValid) message = `Invalid property type! Expected '${type}', instead got '${formatValue(x)}'!`;
+				if(!isTypeValid) message = `Invalid property type! Expected '${type}', instead got '${formatValueType(x)}'!`;
 			}
 
 			if(!isTypeValid) return createResult({
