@@ -2,7 +2,6 @@ const {iterate, uniquify} = require("./utils");
 
 //TODO: Refactor code
 //TODO: Create new type with all possible types
-//TODO: Add property to `SchemaOptions` to allow arrays to have only predefined values (enum)
 //TODO: Add property to `SchemaOptions` to allow types wraping for array items when `keepOrder` is true and `keepLength` is false
 //TODO: Add schema validation of itself
 //TODO: Create documentation
@@ -37,6 +36,7 @@ const {iterate, uniquify} = require("./utils");
  * @prop {number} [length] Exact length of string or array
  * @prop {RegExp} [match] Available for strings. Validates string using regular expression.
  * @prop {any} [equals] Strict equality check against the value
+ * @prop {any[]} [contains] An array of values that are allowed
  * @prop {(value: any, schema: Schema | SchemaOptions) => ValidationResult} [validator] Custom validation function
  */
 
@@ -68,6 +68,7 @@ function formatOptions(options) {
 		length,
 		match,
 		equals,
+		contains,
 		validator
 	} = options;
 
@@ -241,6 +242,7 @@ function validate(x, schema) {
 			length,
 			match,
 			equals,
+			contains,
 			validator
 		} = options;
 
@@ -448,6 +450,17 @@ function validate(x, schema) {
 				if(x !== equals) return createResult({
 					valid: false,
 					message: `Invalid property value! Expected value '${formatValue(equals)}', instead got '${formatValue(x)}'!`
+				});
+			}
+		}
+
+
+		// Enum validation
+		{
+			if("contains" in options && Array.isArray(options.contains)) {
+				if(!contains.includes(x)) return createResult({
+					valid: false,
+					message: `Invalid property value! Expected values '${contains.slice(0, 5).map(formatValue).join(", ")}${contains.length > 5 ? ", ..." : ""}', instead got '${formatValue(x)}'!`
 				});
 			}
 		}
