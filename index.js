@@ -136,8 +136,10 @@ function formatValueType(value) {
 	if(typeof value == "object") {
 		if(Array.isArray(value)) {
 			return `[${value.map(e => formatValueType(e)).join(", ")}]`;
-		} else {
+		} else if(Object.getPrototypeOf(value) === Object.prototype) {
 			return `{${Object.keys(value).map(k => `${k}: ${formatValueType(value[k])}`).join(", ")}}`;
+		} else {
+			return value.constructor.name;
 		}
 	}
 	return "any";
