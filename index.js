@@ -37,6 +37,7 @@ const {iterate, uniquify} = require("./utils");
  * @prop {RegExp} [match] Available for strings. Validates string using regular expression.
  * @prop {any} [equals] Strict equality check against the value
  * @prop {any[]} [contains] An array of values that are allowed
+ * @prop {any} [defaultValue] Default value for not present optional properties
  * @prop {(value: any, schema: Schema | SchemaOptions) => ValidationResult} [validator] Custom validation function
  */
 
@@ -69,6 +70,7 @@ function formatOptions(options) {
 		match,
 		equals,
 		contains,
+		defaultValue,
 		validator
 	} = options;
 
@@ -243,6 +245,7 @@ function validate(x, schema) {
 			match,
 			equals,
 			contains,
+			defaultValue,
 			validator
 		} = options;
 
@@ -250,7 +253,7 @@ function validate(x, schema) {
 		// Invalid values validation
 		{
 			if(x === undefined) {
-				if(optional) return createResult({valid: true, matched: x});
+				if(optional) return createResult({valid: true, matched: "defaultValue" in options ? defaultValue : x});
 				else return createResult({
 					valid: false,
 					message: "Non-optional property is 'undefined'!"
