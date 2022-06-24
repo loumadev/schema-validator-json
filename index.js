@@ -147,6 +147,29 @@ function formatValueType(value) {
 
 /**
  *
+ * @param {any} value
+ * @return {string} 
+ */
+function formatValue(value) {
+	if(value === null) return "null";
+	if(value === undefined) return "undefined";
+	if(typeof value == "string") return `"${value}"`;
+	if(typeof value == "number") return value.toString();
+	if(typeof value == "boolean") return value.toString();
+	if(typeof value == "object") {
+		if(Array.isArray(value)) {
+			return `[${value.map(e => formatValue(e)).join(", ")}]`;
+		} else if(Object.getPrototypeOf(value) === Object.prototype) {
+			return `{${Object.keys(value).map(k => `${k}: ${formatValue(value[k])}`).join(", ")}}`;
+		} else {
+			return value.toString();
+		}
+	}
+	return value.toString();
+}
+
+/**
+ *
  * @param {Object} object
  * @return {ValidationResult} 
  */
@@ -319,7 +342,7 @@ function validate(x, schema) {
 				if(!match.test(x)) {
 					return createResult({
 						valid: false,
-						message: `String '${x}' does not match pattern '${match.toString()}'!`
+						message: `String '${x}' does not match pattern '${formatValue(match)}'!`
 					});
 				}
 			}
@@ -424,7 +447,7 @@ function validate(x, schema) {
 			if("equals" in options) {
 				if(x !== equals) return createResult({
 					valid: false,
-					message: `Invalid property value! Expected value '${equals}', instead got '${x}'!`
+					message: `Invalid property value! Expected value '${formatValue(equals)}', instead got '${formatValue(x)}'!`
 				});
 			}
 		}
