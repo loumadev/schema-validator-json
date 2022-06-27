@@ -2,13 +2,10 @@ const {iterate, uniquify} = require("./utils");
 
 //TODO: Refactor code
 //TODO: Create new type with all possible types
-//TODO: Add property to `SchemaOptions` to allow types wraping for array items when `keepOrder` is true and `keepLength` is false
+//TODO: Add property to `Schema` to allow types wraping for array items when `keepOrder` is true and `keepLength` is false
 //TODO: Add schema validation of itself
 //TODO: Create documentation
 
-//TODO: rename `SchemaOptions.schema` to `SchemaOptions.properties`
-//TODO: remove `Schema`
-//TODO: rename `SchemaOptions` to `Schema`
 
 /**
  * @typedef {{valid: true, matched: any}} ValidationSuccess
@@ -23,13 +20,13 @@ const {iterate, uniquify} = require("./utils");
  */
 
 /**
- * @typedef {Object} SchemaOptions
+ * @typedef {Object} Schema
  * @prop {string} [type="any"] 
  * @prop {string} [instance] 
- * @prop {SchemaOptions[]} [types] (`type` is ignored, if this is set)
+ * @prop {Schema[]} [types] (`type` is ignored, if this is set)
  * @prop {string[]} [instances] (`instance` is ignored, if this is set)
- * @prop {Schema} [schema] 
- * @prop {SchemaOptions[]} [items=[{type: "any"}]] (Available if `type == "array"` only)
+ * @prop {Schema} [properties] 
+ * @prop {Schema[]} [items=[{type: "any"}]] (Available if `type == "array"` only)
  * @prop {boolean} [keepOrder=false] (Available if `type == "array"` only)
  * @prop {boolean} [keepLength=false] (Available if `type == "array"` only)
  * @prop {boolean} [nullable=false] 
@@ -42,17 +39,13 @@ const {iterate, uniquify} = require("./utils");
  * @prop {any} [equals] Strict equality check against the value
  * @prop {any[]} [contains] An array of values that are allowed
  * @prop {any} [defaultValue] Default value for not present optional properties
- * @prop {(value: any, schema: Schema | SchemaOptions) => ValidationResult} [validator] Custom validation function
- */
-
-/**
- * @typedef {Object<string, SchemaOptions>} Schema
+ * @prop {(value: any, schema: Schema) => ValidationResult} [validator] Custom validation function
  */
 
 
 /**
  *
- * @param {SchemaOptions} options
+ * @param {Schema} options
  * @return {string} 
  */
 function formatOptions(options) {
@@ -61,7 +54,7 @@ function formatOptions(options) {
 		instance,
 		types,
 		instances,
-		schema,
+		properties,
 		items = [{type: "any"}],
 		keepOrder = false,
 		keepLength = false,
@@ -81,16 +74,15 @@ function formatOptions(options) {
 	const _types = types || [{type}];
 	const _instances = instances || instance && [instance] || [];
 
-	if(schema) {
-		const schemaPairs = iterate(schema)
-			.filter(e => e[1] !== "$schema")
-			.map(([i, k, q]) => {
-				let computedType = formatOptions(q);
-				if(q.optional) computedType = computedType.replace(/ \| undefined$/m, "");
+	if(properties) {
+		const keyValuePairs = iterate(properties)
+			.map(([i, key, schema]) => {
+				let computedType = formatOptions(schema);
+				if(schema.optional) computedType = computedType.replace(/ \| undefined$/m, "");
 
-				return `${k}${q.optional ? "?" : ""}: ${computedType}`;
+				return `${key}${schema.optional ? "?" : ""}: ${computedType}`;
 			});
-		return `{${schemaPairs.join(", ")}}`;
+		return `{${keyValuePairs.join(", ")}}`;
 	} else {
 		const computedTypes = _types
 			.map(e => {
@@ -98,10 +90,10 @@ function formatOptions(options) {
 				const arrayTypes = isArray && items.map(q => formatOptions(q));
 				let arrayStr = "";
 
-				const isSchema = !!e.schema;
-				let schemaStr = isSchema && formatOptions({schema: e.schema}) || "";
+				const isObject = !!e.properties;
+				let objectStr = isObject && formatOptions({properties: e.properties}) || "";
 
-				if(isArray && !isSchema) {
+				if(isArray && !isObject) {
 					if(keepOrder) {
 						arrayStr = `[${arrayTypes.join(", ")}${keepLength ? "" : ", ..."}]`;
 					} else {
@@ -114,12 +106,12 @@ function formatOptions(options) {
 
 				return _instances
 					.map(t => {
-						if(isSchema) return schemaStr;
+						if(isObject) return objectStr;
 						if(isArray) return arrayStr;
 						if(e.type && e.type !== "any") return `${e.type} & ${t}`;
 						return t;
 					})
-					.join(" | ") || schemaStr || arrayStr || e.type || "any";
+					.join(" | ") || objectStr || arrayStr || e.type || "any";
 			});
 
 		if(nullable) computedTypes.push("null");
@@ -189,11 +181,11 @@ function createResult(object) {
 /**
  * 
  * @param {any} x 
- * @param {Schema | SchemaOptions} schema 
+ * @param {Schema} schema 
  * @returns {ValidationResult}
  */
 function validate(x, schema) {
-	if(schema.$schema) {
+	if(schema.properties) {
 
 		//Trying to validate a non-object value against a schema
 		if(typeof x !== "object" || x === null) {
@@ -206,12 +198,10 @@ function validate(x, schema) {
 		const matched = {};
 
 		//Validate each property of the schema
-		for(const key in schema) {
-			if(key == "$schema") continue;
-
+		for(const key in schema.properties) {
 			//Found a key in the object, so we can try to validate it
 			// if(key in x) {
-			const result = validate(x[key], schema[key]);
+			const result = validate(x[key], schema.properties[key]);
 
 			if(result.valid) {
 				matched[key] = result.matched;
@@ -226,9 +216,6 @@ function validate(x, schema) {
 
 		return createResult({valid: true, matched: matched});
 	} else {
-		/** @type {SchemaOptions} */
-		const options = schema;
-
 
 		// Deconstruct options
 		const {
@@ -236,7 +223,7 @@ function validate(x, schema) {
 			instance,
 			types,
 			instances,
-			schema: _schema,
+			properties,
 			items = [{type: "any"}],
 			keepOrder = false,
 			keepLength = false,
@@ -251,13 +238,13 @@ function validate(x, schema) {
 			contains,
 			defaultValue,
 			validator
-		} = options;
+		} = schema;
 
 
 		// Invalid values validation
 		{
 			if(x === undefined) {
-				if(optional) return createResult({valid: true, matched: "defaultValue" in options ? defaultValue : x});
+				if(optional) return createResult({valid: true, matched: "defaultValue" in schema ? defaultValue : x});
 				else return createResult({
 					valid: false,
 					message: "Non-optional property is 'undefined'!"
@@ -437,10 +424,11 @@ function validate(x, schema) {
 
 
 		// Schema validation
+		//INFO: This code should be never executed
+		//TODO: Remove this block?
 		{
-			if(_schema) {
-				_schema.$schema = true;
-				const result = validate(x, _schema);
+			if(properties) {
+				const result = validate(x, properties);
 
 				if(!result.valid) return createResult({
 					valid: false,
@@ -453,7 +441,7 @@ function validate(x, schema) {
 
 		// Strict equality check
 		{
-			if("equals" in options) {
+			if("equals" in schema) {
 				if(x !== equals) return createResult({
 					valid: false,
 					message: `Invalid property value! Expected value '${formatValue(equals)}', instead got '${formatValue(x)}'!`
@@ -464,7 +452,7 @@ function validate(x, schema) {
 
 		// Enum validation
 		{
-			if("contains" in options && Array.isArray(options.contains)) {
+			if("contains" in schema && Array.isArray(schema.contains)) {
 				if(!contains.includes(x)) return createResult({
 					valid: false,
 					message: `Invalid property value! Expected values '${contains.slice(0, 5).map(formatValue).join(", ")}${contains.length > 5 ? ", ..." : ""}', instead got '${formatValue(x)}'!`

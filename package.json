@@ -1,6 +1,6 @@
 {
 	"name": "schema-validator-json",
-	"version": "0.2.2",
+	"version": "0.3.0",
 	"description": "Validate your JSON or JavaScript object against pre-defined schema.",
 	"main": "index.js",
 	"scripts": {
