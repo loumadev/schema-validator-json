@@ -6,6 +6,10 @@ const {iterate, uniquify} = require("./utils");
 //TODO: Add schema validation of itself
 //TODO: Create documentation
 
+//TODO: rename `SchemaOptions.schema` to `SchemaOptions.properties`
+//TODO: remove `Schema`
+//TODO: rename `SchemaOptions` to `Schema`
+
 /**
  * @typedef {{valid: true, matched: any}} ValidationSuccess
  */
