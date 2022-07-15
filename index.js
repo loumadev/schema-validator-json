@@ -412,7 +412,6 @@ function validate(x, schema) {
 						for(const s of items) {
 							const result = validate(e, s);
 							if(result.valid) {
-								console.log(result, e, s);
 								x[i] = result.matched;
 								continue;
 							}
