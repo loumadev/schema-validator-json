@@ -395,16 +395,27 @@ function validate(x, schema) {
 
 						//Strictly pick item on current index
 						const result = validate(e, items[i]);
-						if(result.valid) continue;
+						if(result.valid) {
+							x[i] = result.matched;
+							continue;
+						}
 
 						error = result;
 						path = result.path || [];
 						path.unshift(`[${i}]`);
 					} else {
 						//Scan if the current type is provided in the list
+						//TODO: The following code is probably quite useless:
+						//no one would user multiple item types without keeping order
+						//the current item in array must match all the provided schemas in the list and that's stupid
+						//that mean the original comment above is incorrect
 						for(const s of items) {
 							const result = validate(e, s);
-							if(result.valid) continue;
+							if(result.valid) {
+								console.log(result, e, s);
+								x[i] = result.matched;
+								continue;
+							}
 
 							error = result;
 							path = result.path || [];
