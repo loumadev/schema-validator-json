@@ -25,7 +25,7 @@ const {iterate, uniquify} = require("./utils");
  * @prop {string} [instance] 
  * @prop {Schema[]} [types] (`type` is ignored, if this is set)
  * @prop {string[]} [instances] (`instance` is ignored, if this is set)
- * @prop {Schema} [properties] 
+ * @prop {Object<string, Schema>} [properties] Properties of the object to be matched
  * @prop {Schema[]} [items=[{type: "any"}]] (Available if `type == "array"` only)
  * @prop {boolean} [keepOrder=false] (Available if `type == "array"` only)
  * @prop {boolean} [keepLength=false] (Available if `type == "array"` only)
