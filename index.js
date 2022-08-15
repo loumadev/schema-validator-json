@@ -25,7 +25,7 @@ const {iterate, uniquify} = require("./utils");
  * @prop {string} [instance] 
  * @prop {Schema[]} [types] (`type` is ignored, if this is set)
  * @prop {string[]} [instances] (`instance` is ignored, if this is set)
- * @prop {Object<string, Schema>} [properties] Properties of the object to be matched
+ * @prop {Object<string, Schema>} [properties] Properties of the object to be matched (can be either `"string"` or `/regex/i`)
  * @prop {Schema[]} [items=[{type: "any"}]] (Available if `type == "array"` only)
  * @prop {boolean} [keepOrder=false] (Available if `type == "array"` only)
  * @prop {boolean} [keepLength=false] (Available if `type == "array"` only)
@@ -76,7 +76,10 @@ function formatOptions(options) {
 
 	if(properties) {
 		const keyValuePairs = iterate(properties)
-			.map(([i, key, schema]) => {
+			.map(([i, k, schema]) => {
+				const isRegex = isKeyRegex(k);
+				const key = `${isRegex ? "[" : ""}${k}${isRegex ? "]" : ""}`;
+
 				let computedType = formatOptions(schema);
 				if(schema.optional) computedType = computedType.replace(/ \| undefined$/m, "");
 
@@ -176,6 +179,15 @@ function createResult(object) {
 	return object.valid ? Object.assign({valid: true}, object) : Object.assign({valid: false, path: [], message: ""}, object);
 }
 
+/**
+ *
+ * @param {string} key
+ * @return {boolean} 
+ */
+function isKeyRegex(key) {
+	return key[0] == "/" && /[\/gmixsuXUAJD]$/.test(key);
+}
+
 
 
 /**
@@ -201,13 +213,55 @@ function validate(x, schema) {
 		for(const key in schema.properties) {
 			//Found a key in the object, so we can try to validate it
 			// if(key in x) {
-			const result = validate(x[key], schema.properties[key]);
 
-			if(result.valid) {
-				matched[key] = result.matched;
+			const schemaProperty = schema.properties[key];
+
+			if(schemaProperty.__regex || isKeyRegex(key)) {
+				//Cache the property regex (or read it from the cache)
+				const regex = schemaProperty.__regex || (schemaProperty.__regex = new RegExp(
+					key.replace(/\/[gmixsuXUAJD]*$/, "").slice(1),	//Replace the first and last slash (and any flags)
+					(key.match(/\/([gmixsuXUAJD]*)$/) || [])[1] || "" //Match the the flags
+				));
+
+				let hasKey = false;
+
+				//Try to match all keys in the object against the regex
+				for(const k in x) {
+					if(!regex.test(k)) continue;
+					hasKey = true;
+
+					//validate matched key
+					const result = validate(x[k], schemaProperty);
+
+					if(result.valid) {
+						matched[k] = result.matched;
+					} else {
+						(result.path || (result.path = [])).unshift(k);
+
+						return createResult({
+							valid: false,
+							path: result.path,
+							message: result.message
+						});
+					}
+				}
+
+				if(!hasKey && !schemaProperty.optional) {
+					return createResult({
+						valid: false,
+						path: [`[${key}]`],
+						message: `Non-optional property has no matching keys defined!`
+					});
+				}
 			} else {
-				(result.path || (result.path = [])).unshift(key);
-				return result;
+				const result = validate(x[key], schemaProperty);
+
+				if(result.valid) {
+					matched[key] = result.matched;
+				} else {
+					(result.path || (result.path = [])).unshift(key);
+					return result;
+				}
 			}
 			// } else if(schema[key].optional) { //If the key is not present and it is optional, we can skip it
 			// 	continue;
