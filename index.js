@@ -155,7 +155,7 @@ function formatValueType(value) {
 function formatValue(value) {
 	if(value === null) return "null";
 	if(value === undefined) return "undefined";
-	if(typeof value == "string") return `"${value}"`;
+	if(typeof value == "string") return `"${value.replace(/"/g, "\\\"")}"`;
 	if(typeof value == "number") return value.toString();
 	if(typeof value == "boolean") return value.toString();
 	if(typeof value == "object") {
