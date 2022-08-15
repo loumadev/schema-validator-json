@@ -90,7 +90,8 @@ function formatOptions(options) {
 		const computedTypes = _types
 			.map(e => {
 				const isArray = e.type == "array";
-				const arrayTypes = isArray && items.map(q => formatOptions(q));
+				const arrayItems = isArray && (e.items || [{type: "any"}]);
+				const arrayTypes = isArray && arrayItems.map(q => formatOptions(q));
 				let arrayStr = "";
 
 				const isObject = !!e.properties;
@@ -98,12 +99,12 @@ function formatOptions(options) {
 
 				if(isArray && !isObject) {
 					if(keepOrder) {
-						arrayStr = `[${arrayTypes.join(", ")}${keepLength ? "" : ", ..."}]`;
+						arrayStr = `[${arrayTypes.join(", ")}${e.keepLength ? "" : ", ..."}]`;
 					} else {
 						const uniqueTypes = uniquify(arrayTypes);
 						arrayStr = uniqueTypes.join(" | ");
 						if(uniqueTypes.length > 1) arrayStr = `(${arrayStr})`;
-						arrayStr = `${arrayStr}[${keepLength ? Math.max(items.length, min) : ""}]`;
+						arrayStr = `${arrayStr}[${e.keepLength ? Math.max(arrayItems.length, e.min || 0) : ""}]`;
 					}
 				}
 
