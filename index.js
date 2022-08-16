@@ -21,7 +21,7 @@ const {iterate, uniquify} = require("./utils");
 
 /**
  * @typedef {Object} Schema
- * @prop {"any" | "array" | "bigint" | "boolean" | "function" | "integer" | "float" | "number" | "object" | "string" | "symbol" | "undefined" | "null"} [type="any"] 
+ * @prop {string | "any" | "array" | "bigint" | "boolean" | "function" | "integer" | "float" | "number" | "object" | "string" | "symbol" | "undefined" | "null"} [type="any"] 
  * @prop {string} [instance] 
  * @prop {Schema[]} [types] (`type` is ignored, if this is set)
  * @prop {string[]} [instances] (`instance` is ignored, if this is set)
