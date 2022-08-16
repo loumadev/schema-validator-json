@@ -21,7 +21,7 @@ const {iterate, uniquify} = require("./utils");
 
 /**
  * @typedef {Object} Schema
- * @prop {string} [type="any"] 
+ * @prop {"any" | "array" | "bigint" | "boolean" | "function" | "integer" | "float" | "number" | "object" | "string" | "symbol" | "undefined" | "null"} [type="any"] 
  * @prop {string} [instance] 
  * @prop {Schema[]} [types] (`type` is ignored, if this is set)
  * @prop {string[]} [instances] (`instance` is ignored, if this is set)
@@ -138,7 +138,10 @@ function formatValueType(value) {
 	if(typeof value == "boolean") return "boolean";
 	if(typeof value == "object") {
 		if(Array.isArray(value)) {
-			return `[${value.map(e => formatValueType(e)).join(", ")}]`;
+			if(value.length == 0) return "any[]";
+			const elementsTypes = value.map(e => formatValueType(e));
+			const hasMultipleTypes = new Set(elementsTypes).size > 1;
+			return hasMultipleTypes ? `[${elementsTypes.join(", ")}]` : `${elementsTypes[0]}[]`;
 		} else if(Object.getPrototypeOf(value) === Object.prototype) {
 			return `{${Object.keys(value).map(k => `${k}: ${formatValueType(value[k])}`).join(", ")}}`;
 		} else {
@@ -204,7 +207,7 @@ function validate(x, schema) {
 		if(typeof x !== "object" || x === null) {
 			return createResult({
 				valid: false,
-				message: `Expected 'object', instead got '${formatValueType(x)}'!`
+				message: `Expected '${formatOptions(schema)}', instead got '${formatValueType(x)}'!`
 			});
 		}
 
@@ -296,25 +299,6 @@ function validate(x, schema) {
 		} = schema;
 
 
-		// Invalid values validation
-		{
-			if(x === undefined) {
-				if(optional) return createResult({valid: true, matched: "defaultValue" in schema ? defaultValue : x});
-				else return createResult({
-					valid: false,
-					message: "Non-optional property is 'undefined'!"
-				});
-			}
-			if(x === null) {
-				if(nullable) return createResult({valid: true, matched: x});
-				else return createResult({
-					valid: false,
-					message: "Non-nullable property is 'null'!"
-				});
-			}
-		}
-
-
 		// Type validation
 		{
 			let isTypeValid = false;
@@ -330,8 +314,7 @@ function validate(x, schema) {
 					}
 				}
 
-				if(!isTypeValid) message = `Invalid property type! Expected '${formatOptions(schema)}', instead got '${formatValueType(x)}'!`;
-				//if(!isTypeValid) message = `Invalid property type! Expected '${types.map(e => e.type).join(" | ")}', instead got '${typeof x}'!`;
+				if(!isTypeValid) message = `Invalid property type! Expected type '${formatOptions(schema)}', instead got '${formatValueType(x)}'!`;
 			} else {
 				if(type === "any") isTypeValid = true;
 				if(type === "array") isTypeValid = Array.isArray(x);
@@ -346,8 +329,16 @@ function validate(x, schema) {
 				if(type === "string") isTypeValid = typeof x === "string";
 				if(type === "symbol") isTypeValid = typeof x === "symbol";
 				if(type === "undefined") isTypeValid = typeof x === "undefined";
+				if(type === "null") isTypeValid = x === null;
 
-				if(!isTypeValid) message = `Invalid property type! Expected '${type}', instead got '${formatValueType(x)}'!`;
+				if(!isTypeValid) {
+					// Invalid values validation
+					if(x === undefined && optional) return createResult({valid: true, matched: "defaultValue" in schema ? defaultValue : x});
+					if(x === null && nullable) return createResult({valid: true, matched: x});
+
+					//Type is invalid
+					message = `Invalid property type! Expected type '${formatOptions(schema)}', instead got '${formatValueType(x)}'!`;
+				}
 			}
 
 			if(!isTypeValid) return createResult({
