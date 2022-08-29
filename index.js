@@ -305,6 +305,11 @@ function validate(x, schema) {
 			let message = "";
 
 			if(types) {
+				// Invalid values validation
+				if(x === undefined && optional) return createResult({valid: true, matched: "defaultValue" in schema ? defaultValue : x});
+				if(x === null && nullable) return createResult({valid: true, matched: x});
+
+				// Validate all types
 				for(const t of types) {
 					const result = validate(x, t);
 
@@ -336,7 +341,7 @@ function validate(x, schema) {
 					if(x === undefined && optional) return createResult({valid: true, matched: "defaultValue" in schema ? defaultValue : x});
 					if(x === null && nullable) return createResult({valid: true, matched: x});
 
-					//Type is invalid
+					// Type is invalid
 					message = `Invalid property type! Expected type '${formatOptions(schema)}', instead got '${formatValueType(x)}'!`;
 				}
 			}
