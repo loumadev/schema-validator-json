@@ -121,7 +121,7 @@ function formatOptions(options) {
 		if(nullable) computedTypes.push("null");
 		if(optional) computedTypes.push("undefined");
 
-		return computedTypes.join(" | ");
+		return [...new Set(computedTypes)].join(" | ");
 	}
 }
 
