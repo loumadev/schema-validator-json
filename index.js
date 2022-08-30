@@ -71,7 +71,7 @@ function formatOptions(options) {
 		validator
 	} = options;
 
-	const _types = types || [{type}];
+	const _types = types || [options];
 	const _instances = instances || instance && [instance] || [];
 
 	if(properties) {
