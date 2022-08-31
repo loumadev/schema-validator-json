@@ -81,9 +81,8 @@ function formatOptions(options) {
 				const key = `${isRegex ? "[" : ""}${k}${isRegex ? "]" : ""}`;
 
 				let computedType = formatOptions(schema);
-				if(schema.optional) computedType = computedType.replace(/ \| undefined$/m, "");
 
-				return `${key}${schema.optional ? "?" : ""}: ${computedType}`;
+				return `${key}${validate(undefined, schema) ? "?" : ""}: ${computedType}`;
 			});
 		return `{${keyValuePairs.join(", ")}}`;
 	} else {
