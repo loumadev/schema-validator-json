@@ -82,7 +82,7 @@ function formatOptions(options) {
 
 				let computedType = formatOptions(schema);
 
-				return `${key}${validate(undefined, schema) ? "?" : ""}: ${computedType}`;
+				return `${key}${validate(undefined, schema).valid ? "?" : ""}: ${computedType}`;
 			});
 		return `{${keyValuePairs.join(", ")}}`;
 	} else {
