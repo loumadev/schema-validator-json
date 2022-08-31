@@ -74,6 +74,8 @@ function formatOptions(options) {
 	const _types = types || [options];
 	const _instances = instances || instance && [instance] || [];
 
+	let outputTypes = [];
+
 	if(properties) {
 		const keyValuePairs = iterate(properties)
 			.map(([i, k, schema]) => {
@@ -84,7 +86,8 @@ function formatOptions(options) {
 
 				return `${key}${validate(undefined, schema).valid ? "?" : ""}: ${computedType}`;
 			});
-		return `{${keyValuePairs.join(", ")}}`;
+
+		outputTypes = [`{${keyValuePairs.join(", ")}}`];
 	} else {
 		const computedTypes = _types
 			.map(e => {
@@ -117,11 +120,13 @@ function formatOptions(options) {
 					.join(" | ") || objectStr || arrayStr || e.type || "any";
 			});
 
-		if(nullable) computedTypes.push("null");
-		if(optional) computedTypes.push("undefined");
-
-		return [...new Set(computedTypes)].join(" | ");
+		outputTypes = computedTypes;
 	}
+
+	if(nullable) outputTypes.push("null");
+	if(optional) outputTypes.push("undefined");
+
+	return uniquify(outputTypes).join(" | ");
 }
 
 /**
@@ -201,6 +206,10 @@ function isKeyRegex(key) {
  */
 function validate(x, schema) {
 	if(schema.properties) {
+
+		//Check for `undefined` / `null` values
+		if(x === undefined && schema.optional) return createResult({valid: true, matched: "defaultValue" in schema ? schema.defaultValue : x});
+		if(x === null && schema.nullable) return createResult({valid: true, matched: x});
 
 		//Trying to validate a non-object value against a schema
 		if(typeof x !== "object" || x === null) {
