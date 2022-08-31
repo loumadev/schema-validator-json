@@ -250,7 +250,7 @@ function validate(x, schema) {
 					}
 				}
 
-				if(!hasKey && !schemaProperty.optional) {
+				if(!hasKey && !validate(undefined, schemaProperty).valid) {
 					return createResult({
 						valid: false,
 						path: [`[${key}]`],
