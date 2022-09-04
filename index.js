@@ -110,14 +110,19 @@ function formatOptions(options) {
 					}
 				}
 
-				return _instances
+				const valuesStr = e.contains && e.contains.map(formatValue).join(" | ") || (e.equals && formatValue(e.equals)) || "";
+				const typesStr = arrayStr || objectStr || valuesStr || e.type || "any";
+
+				const instancesStr = _instances
 					.map(t => {
-						if(isObject) return objectStr;
-						if(isArray) return arrayStr;
-						if(e.type && e.type !== "any") return `${e.type} & ${t}`;
-						return t;
+						const name = t.prototype.constructor.name;
+						if(typesStr !== "any") return `${typesStr} & ${name}`;
+						return name;
 					})
-					.join(" | ") || objectStr || arrayStr || e.type || "any";
+					.join(" | ");
+
+
+				return instancesStr || typesStr;
 			});
 
 		outputTypes = computedTypes;
